@@ -5,22 +5,23 @@ date: "October 23, 2019"
 output: html_document
 ---
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, message=FALSE}
 library(readxl)
 library(dplyr)
 library(zoo)
-data <- read_xlsx("quickbooks.xlsx", col_names = FALSE)
+data <- read_xlsx("../quick books donations.xlsx", col_names = FALSE)
 ```
 
 ```{r}
 data <- data[,colSums(is.na(data)) < nrow(data)]
 
-type_col <- grep("Date", data)
-type_row <- which(data[,grep("Date", data)] == "Date")
+Date_col <- grep("Date", data)
+Date_row <- which(data[,grep("Date", data)] == "Date")
 ```
 
 ```{r}
-if(type_row>1) data<-data[-(1:type_row-1),]
+if(Date_row > 1) data<-data[-(1:Date_row-1),]
+
 data <- data[,colSums(is.na(data)) < nrow(data)-1]
 
 data[1,1]<-"full_name"
@@ -31,12 +32,8 @@ data <- data[-1,]
 ```{r}
 t<-as.numeric(grep("Date", names(data)))-1
 
-for(j in 1:t){
-while((is.na(data[1,t])==TRUE)) data[1,t]<-t
-}
-
 for(i in 1:t){
-data[,i]<- na.locf(data[,i])
+  data[,i]<- na.locf(data[,i],na.rm = F)
 }
 
 data <- data[which(!is.na(data[,"Date"])),] %>% 
@@ -45,12 +42,10 @@ data <- data[which(!is.na(data[,"Date"])),] %>%
 
 payment_method<-c("check")
 data2<-data.frame(data,payment_method)
+```
+
+```{r}
 data2$Date<-as.Date(as.numeric(data$Date),origin="1899-12-30")
-```
-
-
-```
-
 ```
 
 
