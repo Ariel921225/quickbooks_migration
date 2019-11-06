@@ -1,0 +1,64 @@
+---
+title: "Untitled"
+author: "Siqi Wei"
+date: "October 23, 2019"
+output: html_document
+---
+
+```{r, warning=FALSE}
+library(readxl)
+library(dplyr)
+library(zoo)
+data <- read_xlsx("1186_Quickbooks donors.xlsx", col_names = FALSE)
+```
+
+```{r}
+data <- data[,colSums(is.na(data)) < nrow(data)]
+
+type_col <- grep("Type", data)
+type_row <- which(data[,grep("Type", data)] == "Type")
+
+total_col <- grep("TOTAL", data)
+total_row <- which(data[,grep("TOTAL", data)] == "TOTAL")
+```
+
+
+```{r}
+data <- data[,-total_col]
+data<- data[type_row:(total_row-1),]
+data[1,1] <- "Full_name"
+colnames(data) <- data[1,]
+data <- data[-1,]
+```
+
+```{r}
+data[,"Full_name"]<- na.locf(data[,"Full_name"])
+data <- data[which(!is.na(data[,"Date"])),] %>% 
+  subset(select = -c(Balance)) %>% 
+  subset(Amount >= 0)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
