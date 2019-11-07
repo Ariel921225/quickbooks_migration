@@ -9,7 +9,15 @@ output: html_document
 library(readxl)
 library(dplyr)
 library(zoo)
-data <- read_xlsx("../quick books donations.xlsx", col_names = FALSE)
+
+first_sheet <- read_excel("../2019_05_24_quickbooks.xlsx",sheet=1)
+
+if(length(first_sheet)==0) {data<-read_xlsx("../2019_05_24_quickbooks.xlsx",sheet=2,col_names = FALSE)
+} else{
+  data<-first_sheet
+}
+
+
 ```
 
 ```{r}
@@ -42,10 +50,33 @@ data <- data[which(!is.na(data[,"Date"])),] %>%
 
 payment_method<-c("check")
 data2<-data.frame(data,payment_method)
+
+
+
+data3<-subset(data2,is.na(data2$Num)==TRUE,drop = FALSE)
+data3$payment_method<-"other"
+data4<-subset(data2,is.na(data2$Num)==FALSE,drop = FALSE )
+data4$Num<-paste0("Num:",data4$Num)
+data5<-subset(data2,data2$Amount==0,drop=FALSE)
+data5$payment_method<-"in_kind"
+all_data<-rbind(data3,data4,data5)
+
+
+
 ```
 
 ```{r}
-data2$Date<-as.Date(as.numeric(data$Date),origin="1899-12-30")
+all_data<-rename(all_data, payment_description=Num)
+all_data<-rename(all_data, description=Memo)
+all_data$Date<-as.Date(as.numeric(all_data$Date),origin="1899-12-30")
+all_data<-rename(all_data, Donation_date=Date)
+
+c<-c("Donation_date","payment_method","Amount","payment_description","description")
+
+last_data<-all_data[, c(c, sort(setdiff(names(all_data), c)))]
+
+
+
 ```
 
 
