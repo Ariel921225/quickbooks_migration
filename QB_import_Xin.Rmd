@@ -50,35 +50,33 @@ data <- data[which(!is.na(data[,"Date"])),] %>%
   subset(Amount >= 0)
 
 payment_method<-c("check")
-data2<-data.frame(data,payment_method)
+data<-data.frame(data,payment_method)
 
 
-data3<-subset(data2,is.na(data2$Num)==TRUE,drop = FALSE)
-data3$payment_method<-"other"
-data4<-subset(data2,is.na(data2$Num)==FALSE,drop = FALSE )
-data4$Num<-paste0("Num:",data4$Num)
-all_data1<-rbind(data3,data4)
-data5<-subset(all_data1,all_data1$Amount==0,drop=FALSE)
-if(nrow(data5)>0) data5$payment_method<-"in_kind"
-data6<-subset(all_data1,all_data1$Amount>0,drop = FALSE)
-all_data<-rbind(data5,data6)
-
-
+data1<-subset(data,is.na(data$Num)==TRUE,drop = FALSE)
+data1$payment_method<-"other"
+data2<-subset(data,is.na(data$Num)==FALSE,drop = FALSE )
+data2$Num<-paste0("Num:",data2$Num)
+data<-rbind(data1,data2)
+data3<-subset(data,data$Amount==0,drop=FALSE)
+if(nrow(data3)>0) data3$payment_method<-"in_kind"
+data4<-subset(data,data$Amount>0,drop = FALSE)
+data<-rbind(data3,data4)
 
 
 ```
 
 ```{r}
-all_data<-rename(all_data, payment_description=Num)
-all_data<-rename(all_data, description=Memo)
-all_data$Date<-as.Date(as.numeric(all_data$Date),origin="1899-12-30")
-all_data<-rename(all_data, Donation_date=Date)
+data<-rename(data, payment_description=Num,description=Memo,Donation_date=Date)
 
-c<-c("Donation_date","payment_method","Amount","payment_description","description")
+data$Donation_date<-as.Date(as.numeric(data$Donation_date),origin="1899-12-30")
 
-last_data<-all_data[, c(c, sort(setdiff(names(all_data), c)))]
 
-write.xlsx(last_data, "clean_quickbooks.xlsx", showNA=FALSE)
+d<-c("Donation_date","payment_method","Amount","payment_description","description")
+
+data<-data[, c(d, sort(setdiff(names(data), d)))]
+
+write.xlsx(data, "clean_quickbooks.xlsx", showNA=FALSE)
 
 
 ```
