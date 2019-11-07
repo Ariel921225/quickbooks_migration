@@ -11,9 +11,9 @@ library(dplyr)
 library(zoo)
 library(xlsx)
 
-first_sheet <- read_excel("../2019_05_24_quickbooks.xlsx",sheet=1)
+first_sheet <- read_excel("../quickbooks.xlsx",sheet=1)
 
-if(length(first_sheet)==0) {data<-read_xlsx("../2019_05_24_quickbooks.xlsx",sheet=2,col_names = FALSE)
+if(length(first_sheet)==0) {data<-read_xlsx("../quickbooks.xlsx",sheet=2,col_names = FALSE)
 } else{
   data<-first_sheet
 }
@@ -59,7 +59,7 @@ data4<-subset(data2,is.na(data2$Num)==FALSE,drop = FALSE )
 data4$Num<-paste0("Num:",data4$Num)
 all_data1<-rbind(data3,data4)
 data5<-subset(all_data1,all_data1$Amount==0,drop=FALSE)
-data5$payment_method<-"in_kind"
+if(nrow(data5)>0) data5$payment_method<-"in_kind"
 data6<-subset(all_data1,all_data1$Amount>0,drop = FALSE)
 all_data<-rbind(data5,data6)
 
