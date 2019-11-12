@@ -11,9 +11,9 @@ library(dplyr)
 library(zoo)
 library(xlsx)
 
-first_sheet <- read_excel("../quickbooks.xlsx",sheet=1)
+first_sheet <- read_excel("../1186_Quickbooks donors.xlsx",sheet=1)
 
-if(length(first_sheet)==0) {data<-read_xlsx("../quickbooks.xlsx",sheet=2,col_names = FALSE)
+if(length(first_sheet)==0) {data<-read_xlsx("../1186_Quickbooks donors.xlsx",sheet=2,col_names = FALSE)
 } else{
   data<-first_sheet
 }
@@ -49,17 +49,17 @@ data <- data[which(!is.na(data[,"Date"])),] %>%
   subset(select = -c(Balance)) %>% 
   subset(Amount >= 0)
 
-payment_method<-c("check")
+payment_method<-"check"
 data<-data.frame(data,payment_method)
-
 
 data1<-subset(data,is.na(data$Num)==TRUE,drop = FALSE)
 data1$payment_method<-"other"
-data2<-subset(data,is.na(data$Num)==FALSE,drop = FALSE )
+data2<-subset(data,is.na(data$Num)==FALSE,drop = FALSE)
 data2$Num<-paste0("Num:",data2$Num)
 data<-rbind(data1,data2)
 data3<-subset(data,data$Amount==0,drop=FALSE)
 if(nrow(data3)>0) data3$payment_method<-"in_kind"
+
 data4<-subset(data,data$Amount>0,drop = FALSE)
 data<-rbind(data3,data4)
 
@@ -75,6 +75,13 @@ data$Donation_date<-as.Date(as.numeric(data$Donation_date),origin="1899-12-30")
 d<-c("Donation_date","payment_method","Amount","payment_description","description")
 
 data<-data[, c(d, sort(setdiff(names(data), d)))]
+
+if(c("Type") %in% colnames(data)){
+  Type <- unlist(data$Type) %>%
+  unique() %>%
+  na.omit() %>%
+  sort()
+}
 
 write.xlsx(data, "clean_quickbooks.xlsx", showNA=FALSE)
 
