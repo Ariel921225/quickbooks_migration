@@ -4,94 +4,109 @@ author: "Xin Yu"
 date: "Nov 17, 2019"
 output: html_document
 ---
-
 ```{r, warning=FALSE, message=FALSE}
 library(readxl)
 library(dplyr)
+library(data.table)
 library(zoo)
 library(xlsx)
+```
 
-first_sheet <- read_excel("../1186_Quickbooks donors.xlsx",sheet=1)
+```{r}
+filename <- "../1186_Quickbooks donors.xlsx"
 
-if(length(first_sheet)==0) {data<-read_xlsx("../1186_Quickbooks donors.xlsx",sheet=2,col_names = FALSE)
-} else{
-  data<-first_sheet
+if (length(grep("csv", filename)) + length(grep("CSV", filename)) == 0) {
+    QuickBook_data <- read_excel(filename, col_names = FALSE)
+    
+    if(length(QuickBook_data) == 0) {
+      QuickBook_data <- read_xlsx(filename, sheet=2, col_names = FALSE)
+    }
+    
+  } else {
+    QuickBook_data <- read.csv(filename, stringsAsFactors = FALSE, header = FALSE)
+  }
+
+```
+
+
+
+```{r}
+QuickBook_data[QuickBook_data == ""] <- NA
+    
+QuickBook_data <- QuickBook_data[,colSums(is.na(QuickBook_data)) < nrow(QuickBook_data)]
+
+Date_col <- grep("\\bDate\\b", QuickBook_data)
+Date_row <- which(QuickBook_data[,Date_col] == "Date")
+
+if(Date_row > 1) {
+    QuickBook_data <- QuickBook_data[-(1:Date_row-1),]
 }
 
+#QuickBook_data <- QuickBook_data[,colSums(is.na(QuickBook_data)) < nrow(QuickBook_data)-1]
+    
+if ("TOTAL" %in% QuickBook_data[,1] | "Total" %in% QuickBook_data[,1]) {
+    QuickBook_data <- QuickBook_data[,-1]
+  }
 
-```
+QuickBook_data[1,1] <- "full_name"
+colnames(QuickBook_data) <- QuickBook_data[1,]
+QuickBook_data <- QuickBook_data[-1,]
 
-```{r}
-data <- data[,colSums(is.na(data)) < nrow(data)]
-
-Date_col <- grep("Date", data)
-Date_row <- which(data[,grep("Date", data)] == "Date")
-```
-
-```{r}
-if(Date_row > 1) data<-data[-(1:Date_row-1),]
-
-data <- data[,colSums(is.na(data)) < nrow(data)-1]
-
-data[1,1]<-"full_name"
-colnames(data) <- data[1,]
-data <- data[-1,]
-```
-
-```{r}
-t<-as.numeric(grep("Date", names(data)))-1
+t <- as.numeric(grep("Date", names(QuickBook_data)))-1
 
 for(i in 1:t){
-  data[,i]<- na.locf(data[,i],na.rm = F)
+  QuickBook_data[,i]<- na.locf(QuickBook_data[,i], na.rm = F)
 }
-
-data <- data[which(!is.na(data[,"Date"])),]
-if(c("Balance") %in% colnames(data)) data<-subset(data,select = -c(Balance)) 
-
-if(c("Amount") %in% colnames(data)) {
-  data<-subset(data,Amount >= 0)
-} else{
-  data<-subset(data,data$Credit >= 0)
-  data<-rename(data,Amount=Credit)
+    
+QuickBook_data <- setnames(QuickBook_data, 
+                           old = c("Num", "Memo", "Date", "Credit"),
+                           new = c("payment_description", "description", "Donation_date","Amount"),
+                           skip_absent = TRUE)
+    
+QuickBook_data <- QuickBook_data[which(!is.na(QuickBook_data[,"Donation_date"])),] %>%
+  subset(Amount >= 0)
+    
+if ("Balance" %in% names(QuickBook_data)){
+  QuickBook_data <- QuickBook_data %>% 
+  subset(select = -c(Balance))
 }
-
-payment_method<-"check"
-data<-data.frame(data,payment_method)
-
-data1<-subset(data,is.na(data$Num)==TRUE,drop = FALSE)
-if(nrow(data1)>0) data1$payment_method<-"other"
-data2<-subset(data,is.na(data$Num)==FALSE,drop = FALSE)
-data2$Num<-paste0("Num:",data2$Num)
-data<-rbind(data1,data2)
-data3<-subset(data,data$Amount==0,drop=FALSE)
-if(nrow(data3)>0) data3$payment_method<-"in_kind"
-
-data4<-subset(data,data$Amount>0,drop = FALSE)
-data<-rbind(data3,data4)
+    
+if ("payment_description" %in% names(QuickBook_data)) {
+  QuickBook_data$payment_method <- ifelse(is.na(QuickBook_data$payment_description), "Other", "Check")
+  QuickBook_data$payment_description<-ifelse(is.na(QuickBook_data$payment_description), NA,
+                                             paste0("Num:",QuickBook_data$payment_description))
+  QuickBook_data$payment_method <- ifelse(QuickBook_data$Amount == 0, "in_kind",QuickBook_data$payment_method)
+} else {
+  QuickBook_data$payment_method <- "Other"
+}
+    
 
 
+sum_na_date <- as.numeric(QuickBook_data$Donation_date) %>% 
+  is.na() %>% 
+  sum()
+    
+if (sum_na_date < nrow(QuickBook_data)/2) {
+  QuickBook_data$Donation_date<-as.Date(as.numeric(QuickBook_data$Donation_date),origin="1899-12-30")
+} else {
+  QuickBook_data$Donation_date<-as.Date(QuickBook_data$Donation_date,format="%m/%d/%Y")
+}
+    
+qb_order<-c("Donation_date","Amount","payment_method","full_name")
+
+CleanQuickBook <- QuickBook_data[, c(qb_order, setdiff(names(QuickBook_data), qb_order))]
 ```
 
+
 ```{r}
-data<-rename(data, payment_description=Num,description=Memo,Donation_date=Date)
-
-data$Donation_date<-as.Date(as.numeric(data$Donation_date),origin="1899-12-30")
-
-
-d<-c("Donation_date","payment_method","Amount","payment_description","description")
-
-data<-data[, c(d, sort(setdiff(names(data), d)))]
-
-if(c("Type") %in% colnames(data)){
-  Type <- unlist(data$Type) %>%
+if(c("Type") %in% colnames(CleanQuickBook)){
+  Type <- unlist(CleanQuickBook$Type) %>%
   unique() %>%
   na.omit() %>%
   sort()
 }
 
-write.xlsx(data, "clean_quickbooks.xlsx", showNA=FALSE)
-
-
+write.xlsx(CleanQuickBook, "clean_quickbooks.xlsx", showNA=FALSE)
 ```
 
 
